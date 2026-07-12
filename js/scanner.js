@@ -24,8 +24,10 @@ const Scanner = (() => {
     try {
       const ZXingLib = window.ZXing;
       codeReader = new ZXingLib.BrowserMultiFormatReader();
-      const devices = await ZXingLib.BrowserCodeReader.listVideoInputDevices();
-      const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
+      const devices = await codeReader.listVideoInputDevices();
+      // Prefer a rear/back camera on phones; otherwise fall back to the last listed device
+      const rearCam = devices.find(d => /back|rear|environment/i.test(d.label));
+      const deviceId = rearCam ? rearCam.deviceId : (devices.length ? devices[devices.length - 1].deviceId : undefined);
       codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
         if (result) {
           onResultCallback && onResultCallback(result.getText());

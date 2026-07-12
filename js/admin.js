@@ -18,7 +18,7 @@
    You can change SECRET_SEQUENCE below to anything you like.
    ============================================================ */
 
-const ADMIN_PASSPHRASE_DEFAULT = "Lancet123!"; // <-- change this before publishing, or set a new one on first unlock
+const ADMIN_PASSPHRASE_DEFAULT = "changeme123"; // <-- change this before publishing, or set a new one on first unlock
 const SECRET_SEQUENCE = "admin"; // <-- typed anywhere (not in a text field) to open the hidden console
 
 const Admin = (() => {
