@@ -1,0 +1,61 @@
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes brandPulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 10px rgba(91,227,216,0.6)); }
+  50% { opacity: 0.75; filter: drop-shadow(0 0 18px rgba(91,227,216,0.9)); }
+}
+
+@keyframes dotBreathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scanSweep {
+  0% { top: 6%; }
+  50% { top: 92%; }
+  100% { top: 6%; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+  to { opacity: 0; transform: translateX(30px); }
+}
+
+.toast.closing { animation: toastOut 0.3s var(--ease-glass) forwards; }
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stat-card, .person-card, .fridge-block, .timeline-item, .label-card {
+  animation: cardEnter 0.4s var(--ease-glass) backwards;
+}
+
+@keyframes shimmerFrost {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Row highlight when a sample updates */
+@keyframes rowFlash {
+  0% { background: rgba(91,227,216,0.18); }
+  100% { background: transparent; }
+}
+.row-flash { animation: rowFlash 1.4s var(--ease-glass); }
+
+/* Admin overlay entrance */
+@keyframes adminIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}

@@ -1,0 +1,122 @@
+/* ============================================================
+   LABTRACK — DESIGN TOKENS
+   Palette: cold-storage frost. A deep glacial navy base with
+   cyan/ice highlights, evoking a lab freezer readout at night.
+   Type: JetBrains Mono for anything that is "data" (barcodes,
+   codes, timestamps, IDs) — Space Grotesk for UI voice.
+   ============================================================ */
+
+:root {
+  /* --- Core palette --- */
+  --void-950: #05080f;
+  --void-900: #070c16;
+  --void-850: #0a1120;
+  --void-800: #0d1730;
+  --void-700: #142244;
+  --void-600: #1c2f5a;
+
+  --ice-100: #eaf6ff;
+  --ice-200: #cdeeff;
+  --ice-300: #9fdcff;
+  --ice-400: #62c3f5;
+  --ice-500: #33a8e0;
+  --ice-600: #1d84c2;
+
+  --frost-cyan: #5be3d8;
+  --frost-cyan-dim: #2c8f89;
+
+  --signal-amber: #f5b942;
+  --signal-red: #ff5c6c;
+  --signal-red-dim: #b23b47;
+  --signal-green: #52e6a0;
+
+  --text-primary: #eef5fb;
+  --text-secondary: #9fb4cc;
+  --text-tertiary: #66799a;
+  --text-on-ice: #061421;
+
+  /* --- Glass surfaces --- */
+  --glass-fill: rgba(20, 34, 68, 0.42);
+  --glass-fill-strong: rgba(20, 34, 68, 0.62);
+  --glass-fill-soft: rgba(20, 34, 68, 0.26);
+  --glass-border: rgba(159, 220, 255, 0.14);
+  --glass-border-strong: rgba(159, 220, 255, 0.28);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+
+  /* --- Type --- */
+  --font-ui: 'Space Grotesk', system-ui, sans-serif;
+  --font-data: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* --- Radii / shadow --- */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+
+  --shadow-glass: 0 8px 32px rgba(2, 6, 16, 0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-glow-cyan: 0 0 0 1px rgba(91,227,216,0.15), 0 0 24px rgba(91,227,216,0.18);
+  --shadow-glow-ice: 0 0 24px rgba(98,195,245,0.25);
+
+  --ease-glass: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--void-950);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+code, .mono, .data-code {
+  font-family: var(--font-data);
+}
+
+a { color: var(--ice-400); }
+
+::selection {
+  background: rgba(91, 227, 216, 0.3);
+  color: var(--text-primary);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--void-600);
+  border-radius: 10px;
+  border: 2px solid var(--void-950);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ice-600); }
+
+/* Focus visibility (accessibility floor) */
+:focus-visible {
+  outline: 2px solid var(--frost-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,117 @@
+/* ============================================================
+   HIDDEN ADMIN PANEL
+   No nav entry references this anywhere in the visible UI.
+   Opened only via the secret gesture defined in js/admin.js
+   ============================================================ */
+
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(2, 4, 9, 0.86);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.admin-overlay.show { display: flex; animation: adminIn 0.3s var(--ease-glass); }
+
+.admin-panel {
+  width: 100%;
+  max-width: 920px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0c1424, #060a14);
+  border: 1px solid rgba(255, 92, 108, 0.25);
+  border-radius: var(--r-xl);
+  box-shadow: 0 0 0 1px rgba(255,92,108,0.08), 0 30px 90px rgba(0,0,0,0.7), 0 0 60px rgba(255,92,108,0.06);
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 26px;
+  border-bottom: 1px solid rgba(255,92,108,0.18);
+  position: sticky;
+  top: 0;
+  background: #060a14;
+}
+.admin-title { display: flex; align-items: center; gap: 14px; }
+.admin-mark {
+  font-size: 26px;
+  color: var(--signal-red);
+  filter: drop-shadow(0 0 10px rgba(255,92,108,0.6));
+}
+.admin-title h2 { font-size: 18px; color: var(--signal-red); }
+.admin-title p { font-size: 12px; color: var(--text-tertiary); margin: 2px 0 0; }
+
+.admin-lock {
+  padding: 60px 26px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.admin-lock p { color: var(--text-secondary); font-size: 14px; }
+.admin-lock input {
+  background: rgba(255,92,108,0.06);
+  border: 1px solid rgba(255,92,108,0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-data);
+  width: 260px;
+  text-align: center;
+  outline: none;
+}
+.admin-lock-hint { font-size: 11.5px; color: var(--text-tertiary); max-width: 320px; }
+
+.admin-content { padding: 22px 26px; }
+
+.admin-tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.admin-tab-btn {
+  background: rgba(255,92,108,0.06);
+  border: 1px solid rgba(255,92,108,0.18);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  cursor: pointer;
+}
+.admin-tab-btn.active {
+  background: var(--signal-red);
+  color: #fff;
+  border-color: var(--signal-red);
+}
+
+.admin-view { display: none; }
+.admin-view.active { display: block; animation: viewIn 0.3s var(--ease-glass); }
+
+.danger-card {
+  background: rgba(255,92,108,0.05);
+  border: 1px solid rgba(255,92,108,0.22);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.danger-card h4 { color: var(--signal-red); font-size: 14px; margin-bottom: 4px; }
+.danger-card p { font-size: 12.5px; color: var(--text-tertiary); margin: 0 0 12px; }
+
+.raw-json-area {
+  width: 100%;
+  min-height: 320px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  color: var(--frost-cyan);
+  font-family: var(--font-data);
+  font-size: 12px;
+  padding: 14px;
+  outline: none;
+  resize: vertical;
+}

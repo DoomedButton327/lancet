@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabTrack — Sample Chain of Custody</title>
+<meta name="description" content="Sample tracking and chain-of-custody system">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧊</text></svg>">
+
+<!-- Fonts: JetBrains Mono for codes/data, Space Grotesk for UI -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Barcode generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.6/JsBarcode.all.min.js"></script>
+<!-- Camera barcode scanning -->
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<!-- ============ FROST BACKGROUND LAYERS ============ -->
+<div class="bg-layer" aria-hidden="true">
+  <div class="frost-gradient"></div>
+  <canvas id="particleCanvas"></canvas>
+  <div class="grid-overlay"></div>
+</div>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <span class="brand-text">LabTrack</span>
+    </div>
+    <div class="sync-indicator" id="syncIndicator" title="Sync status">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncLabel">Local only</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" id="scanBtn" title="Scan barcode">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+      <span>Scan</span>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ============ NAV TABS ============ -->
+<nav class="tabs" id="mainTabs">
+  <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+  <button class="tab-btn" data-tab="samples">Samples</button>
+  <button class="tab-btn" data-tab="storage">Storage Map</button>
+  <button class="tab-btn" data-tab="people">People</button>
+  <button class="tab-btn" data-tab="history">History</button>
+  <button class="tab-btn" data-tab="generate">Generate Labels</button>
+</nav>
+
+<!-- ============ MAIN CONTENT ============ -->
+<main id="app">
+
+  <!-- ---------- DASHBOARD ---------- -->
+  <section class="view active" id="view-dashboard">
+    <div class="view-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="view-sub">Live overview of every sample in the system</p>
+      </div>
+      <button class="btn btn-primary" id="quickAddBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Sample
+      </button>
+    </div>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="dash-columns">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Currently Checked Out</h3>
+          <span class="pill pill-warn" id="checkedOutCount">0</span>
+        </div>
+        <div class="panel-body" id="checkedOutList"><div class="empty-state">Nothing checked out. All samples are home.</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Recent Activity</h3>
+        </div>
+        <div class="panel-body" id="recentActivityList"><div class="empty-state">No activity yet.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- SAMPLES ---------- -->
+  <section class="view" id="view-samples">
+    <div class="view-header">
+      <div>
+        <h1>Samples</h1>
+        <p class="view-sub">Every specimen tracked by LabTrack</p>
+      </div>
+      <button class="btn btn-primary" id="addSampleBtn2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Sample
+      </button>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="sampleSearch" placeholder="Search by name, barcode, location, or tag...">
+      </div>
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="in">In storage</option>
+        <option value="out">Checked out</option>
+        <option value="depleted">Depleted</option>
+        <option value="disposed">Disposed</option>
+      </select>
+      <select id="rowFilter">
+        <option value="">All rows</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table" id="samplesTable">
+        <thead>
+          <tr>
+            <th>Barcode</th>
+            <th>Sample</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Last Handled By</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="samplesTableBody"></tbody>
+      </table>
+      <div class="empty-state" id="samplesEmptyState" style="display:none;">No samples match your filters.</div>
+    </div>
+  </section>
+
+  <!-- ---------- STORAGE MAP ---------- -->
+  <section class="view" id="view-storage">
+    <div class="view-header">
+      <div>
+        <h1>Storage Map</h1>
+        <p class="view-sub">Fridges, rows, and slots at a glance</p>
+      </div>
+      <button class="btn btn-ghost" id="manageStorageBtn">Manage Locations</button>
+    </div>
+    <div id="storageMapContainer" class="storage-map"></div>
+  </section>
+
+  <!-- ---------- PEOPLE ---------- -->
+  <section class="view" id="view-people">
+    <div class="view-header">
+      <div>
+        <h1>People</h1>
+        <p class="view-sub">Everyone authorized to handle samples</p>
+      </div>
+      <button class="btn btn-primary" id="addPersonBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Person
+      </button>
+    </div>
+    <div class="people-grid" id="peopleGrid"></div>
+  </section>
+
+  <!-- ---------- HISTORY ---------- -->
+  <section class="view" id="view-history">
+    <div class="view-header">
+      <div>
+        <h1>History</h1>
+        <p class="view-sub">Full chain-of-custody log — every action, timestamped</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="exportHistoryBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="historySearch" placeholder="Search history by sample, person, or action...">
+      </div>
+      <select id="historyActionFilter">
+        <option value="">All actions</option>
+        <option value="created">Created</option>
+        <option value="checkout">Checked out</option>
+        <option value="checkin">Checked in</option>
+        <option value="moved">Moved</option>
+        <option value="edited">Edited</option>
+        <option value="disposed">Disposed</option>
+        <option value="note">Note</option>
+      </select>
+      <input type="date" id="historyDateFilter">
+    </div>
+
+    <div class="timeline" id="historyTimeline"></div>
+  </section>
+
+  <!-- ---------- GENERATE LABELS ---------- -->
+  <section class="view" id="view-generate">
+    <div class="view-header">
+      <div>
+        <h1>Generate Labels</h1>
+        <p class="view-sub">Print barcode labels for new or existing samples</p>
+      </div>
+    </div>
+
+    <div class="generate-layout">
+      <div class="panel">
+        <div class="panel-head"><h3>Label Settings</h3></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <label>Barcode source</label>
+            <select id="genSourceType">
+              <option value="new">Generate new code</option>
+              <option value="existing">Use existing sample</option>
+            </select>
+          </div>
+          <div class="form-row" id="genExistingRow" style="display:none;">
+            <label>Sample</label>
+            <select id="genExistingSample"></select>
+          </div>
+          <div class="form-row" id="genPrefixRow">
+            <label>Prefix</label>
+            <input type="text" id="genPrefix" value="LAB" maxlength="6">
+          </div>
+          <div class="form-row">
+            <label>Number of labels</label>
+            <input type="number" id="genCount" value="1" min="1" max="60">
+          </div>
+          <div class="form-row">
+            <label>Barcode format</label>
+            <select id="genFormat">
+              <option value="CODE128">CODE128 (recommended)</option>
+              <option value="CODE39">CODE39</option>
+              <option value="EAN13">EAN13</option>
+            </select>
+          </div>
+          <button class="btn btn-primary full-width" id="genBuildBtn">Generate Labels</button>
+          <button class="btn btn-ghost full-width" id="genPrintBtn">Print Sheet</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Preview</h3></div>
+        <div class="panel-body">
+          <div id="labelSheet" class="label-sheet"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-backdrop" id="modalBackdrop"></div>
+
+<!-- Sample Modal (Add/Edit) -->
+<div class="modal" id="sampleModal">
+  <div class="modal-head">
+    <h2 id="sampleModalTitle">New Sample</h2>
+    <button class="modal-close" data-close-modal="sampleModal">&times;</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="sampleId">
+    <div class="form-grid">
+      <div class="form-row span-2">
+        <label>Sample name *</label>
+        <input type="text" id="sampleName" placeholder="e.g. Serum Batch 14 — Patient Cohort A">
+      </div>
+      <div class="form-row">
+        <label>Barcode</label>
+        <div class="input-with-btn">
+          <input type="text" id="sampleBarcode" placeholder="Scan or type...">
+          <button class="btn-icon-inline" id="scanIntoField" title="Scan into this field">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          </button>
+          <button class="btn-icon-inline" id="genBarcodeField" title="Auto-generate">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Sample type</label>
+        <input type="text" id="sampleType" placeholder="e.g. Blood, Tissue, Reagent">
+      </div>
+      <div class="form-row">
+        <label>Fridge / Unit</label>
+        <input type="text" id="sampleFridge" placeholder="e.g. Fridge 2">
+      </div>
+      <div class="form-row">
+        <label>Row</label>
+        <input type="text" id="sampleRow" placeholder="e.g. Row 1">
+      </div>
+      <div class="form-row">
+        <label>Slot / Position</label>
+        <input type="text" id="sampleSlot" placeholder="e.g. Slot 3">
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select id="sampleStatus">
+          <option value="in">In storage</option>
+          <option value="out">Checked out</option>
+          <option value="depleted">Depleted</option>
+          <option value="disposed">Disposed</option>
+        </select>
+      </div>
+      <div class="form-row span-2">
+        <label>Notes</label>
+        <textarea id="sampleNotes" rows="2" placeholder="Optional notes about this sample..."></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" data-close-modal="sampleModal">Cancel</button>
+    <button class="btn btn-primary" id="saveSampleBtn">Save Sample</button>
+  </div>
+</div>
+
+<!-- Sample Detail / Check-out Modal -->
+<div class="modal modal-wide" id="detailModal">
+  <div class="modal-head">
+    <h2 id="detailModalTitle">Sample</h2>
+    <button class="modal-close" data-close-modal="detailModal">&times;</button>
+  </div>
+  <div class="modal-body" id="detailModalBody"></div>
+</div>
+
+<!-- Scanner Modal -->
+<div class="modal" id="scannerModal">
+  <div class="modal-head">
+    <h2>Scan Barcode</h2>
+    <button class="modal-close" data-close-modal="scannerModal">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="scanner-frame">
+      <video id="scannerVideo"></video>
+      <div class="scan-line"></div>
+    </div>
+    <p class="scanner-hint" id="scannerHint">Point a barcode at the camera, or plug in a USB scanner and scan now — it types directly.</p>
+    <div class="form-row">
+      <label>Manual entry</label>
+      <input type="text" id="manualScanInput" placeholder="Type barcode and press Enter">
+    </div>
+  </div>
+</div>
+
+<!-- Person Modal -->
+<div class="modal" id="personModal">
+  <div class="modal-head">
+    <h2 id="personModalTitle">Add Person</h2>
+    <button class="modal-close" data-close-modal="personModal">&times;</button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="personId">
+    <div class="form-row">
+      <label>Full name *</label>
+      <input type="text" id="personName" placeholder="e.g. Dr. Naledi Khumalo">
+    </div>
+    <div class="form-row">
+      <label>Role</label>
+      <input type="text" id="personRole" placeholder="e.g. Lab Technician">
+    </div>
+    <div class="form-row">
+      <label>Badge / ID code (optional)</label>
+      <input type="text" id="personBadge" placeholder="Can be scanned like a barcode">
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" data-close-modal="personModal">Cancel</button>
+    <button class="btn btn-primary" id="savePersonBtn">Save Person</button>
+  </div>
+</div>
+
+<!-- Storage Location Modal -->
+<div class="modal" id="storageModal">
+  <div class="modal-head">
+    <h2>Manage Locations</h2>
+    <button class="modal-close" data-close-modal="storageModal">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <label>Add Fridge / Unit</label>
+      <div class="input-with-btn">
+        <input type="text" id="newFridgeName" placeholder="e.g. Fridge 3">
+        <button class="btn-icon-inline" id="addFridgeBtn">+</button>
+      </div>
+    </div>
+    <div id="fridgeListManage"></div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal" id="settingsModal">
+  <div class="modal-head">
+    <h2>Settings</h2>
+    <button class="modal-close" data-close-modal="settingsModal">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="settings-section">
+      <h4>GitHub Sync</h4>
+      <p class="settings-desc">Connect a GitHub repo to persist data across devices. Uses a fine-grained Personal Access Token with Contents read/write on one repo.</p>
+      <div class="form-row">
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="ghToken" placeholder="github_pat_...">
+      </div>
+      <div class="form-row">
+        <label>Repository (owner/repo)</label>
+        <input type="text" id="ghRepo" placeholder="e.g. ghostly/labtrack-data">
+      </div>
+      <div class="form-row">
+        <label>Branch</label>
+        <input type="text" id="ghBranch" value="main">
+      </div>
+      <div class="form-row">
+        <label>Data file path</label>
+        <input type="text" id="ghPath" value="labtrack-data.json">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="ghConnectBtn">Connect &amp; Pull</button>
+        <button class="btn btn-ghost" id="ghPushBtn">Push Now</button>
+        <button class="btn btn-danger-ghost" id="ghDisconnectBtn">Disconnect</button>
+      </div>
+      <p class="settings-note" id="ghStatusNote">Not connected — data is saved to this browser only.</p>
+    </div>
+
+    <div class="settings-section">
+      <h4>Local Data</h4>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="exportLocalBtn">Export Backup (.json)</button>
+        <button class="btn btn-ghost" id="importLocalBtn">Import Backup</button>
+        <input type="file" id="importLocalInput" accept="application/json" style="display:none;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HIDDEN ADMIN PANEL ============ -->
+<!-- No visible menu entry anywhere. Opened only via secret gesture — see js/admin.js -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel" id="adminPanel">
+    <div class="admin-header">
+      <div class="admin-title">
+        <span class="admin-mark">◈</span>
+        <div>
+          <h2>Root Console</h2>
+          <p>Full administrative control — hidden from normal navigation</p>
+        </div>
+      </div>
+      <button class="modal-close" id="adminCloseBtn">&times;</button>
+    </div>
+
+    <div class="admin-lock" id="adminLock">
+      <p>Enter admin passphrase</p>
+      <input type="password" id="adminPassInput" placeholder="Passphrase" autocomplete="off">
+      <button class="btn btn-primary" id="adminUnlockBtn">Unlock</button>
+      <p class="admin-lock-hint">First time? Set your passphrase in js/admin.js — see comments.</p>
+    </div>
+
+    <div class="admin-content" id="adminContent" style="display:none;">
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-admin-tab="overview">Overview</button>
+        <button class="admin-tab-btn" data-admin-tab="rewrite">Rewrite History</button>
+        <button class="admin-tab-btn" data-admin-tab="danger">Danger Zone</button>
+        <button class="admin-tab-btn" data-admin-tab="raw">Raw Data</button>
+      </div>
+
+      <div class="admin-view active" id="admin-overview">
+        <div class="stat-grid" id="adminStatGrid"></div>
+        <p class="settings-desc">This console bypasses all normal UI restrictions. Every action here is itself logged to history as performed by <strong>ROOT</strong>.</p>
+      </div>
+
+      <div class="admin-view" id="admin-rewrite">
+        <p class="settings-desc">Edit or delete any history entry, or backdate/relabel an action. Use carefully — this rewrites the chain of custody record itself.</p>
+        <div class="table-wrap">
+          <table class="data-table" id="adminHistoryTable">
+            <thead><tr><th>Time</th><th>Action</th><th>Sample</th><th>Person</th><th>Details</th><th></th></tr></thead>
+            <tbody id="adminHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-view" id="admin-danger">
+        <div class="danger-card">
+          <h4>Wipe all samples</h4>
+          <p>Deletes every sample. History is preserved.</p>
+          <button class="btn btn-danger" id="adminWipeSamples">Wipe Samples</button>
+        </div>
+        <div class="danger-card">
+          <h4>Wipe all history</h4>
+          <p>Deletes the entire chain-of-custody log. Cannot be undone.</p>
+          <button class="btn btn-danger" id="adminWipeHistory">Wipe History</button>
+        </div>
+        <div class="danger-card">
+          <h4>Factory reset</h4>
+          <p>Deletes everything — samples, people, locations, history.</p>
+          <button class="btn btn-danger" id="adminFactoryReset">Factory Reset</button>
+        </div>
+        <div class="danger-card">
+          <h4>Change admin passphrase</h4>
+          <div class="form-row">
+            <input type="password" id="adminNewPass" placeholder="New passphrase">
+          </div>
+          <button class="btn btn-ghost" id="adminChangePass">Update Passphrase</button>
+        </div>
+      </div>
+
+      <div class="admin-view" id="admin-raw">
+        <p class="settings-desc">Raw JSON store. Edit directly and apply — no validation.</p>
+        <textarea id="adminRawJson" class="raw-json-area" spellcheck="false"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="adminApplyRaw">Apply Raw Data</button>
+          <button class="btn btn-ghost" id="adminReloadRaw">Reload From Store</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/store.js"></script>
+<script src="js/github.js"></script>
+<script src="js/webhook.js"></script>
+<script src="js/barcode.js"></script>
+<script src="js/scanner.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
