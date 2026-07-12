@@ -29,37 +29,44 @@ const Scanner = (() => {
       const rearCam = devices.find(d => /back|rear|environment/i.test(d.label));
       const deviceId = rearCam ? rearCam.deviceId : (devices.length ? devices[devices.length - 1].deviceId : undefined);
       
-      // Apply autofocus constraints to the video element
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Get camera stream with autofocus capabilities
+      const constraints = {
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          facingMode: rearCam ? 'environment' : undefined,
-          focusMode: 'continuous',
-          advanced: [{ focusMode: 'continuous' }, { focusMode: 'auto' }]
+          facingMode: rearCam ? 'environment' : undefined
         }
-      });
+      };
+
+      // Try to get the stream with autofocus
+      activeStream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      // Set the video element's srcObject with autofocus-enabled stream
-      videoEl.srcObject = stream;
-      videoEl.setAttribute('autofocus', '');
-      videoEl.setAttribute('playsinline', '');
-      
-      // Apply autofocus capabilities if supported
-      const track = stream.getVideoTracks()[0];
-      if (track && track.getCapabilities) {
-        const capabilities = track.getCapabilities();
-        if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-          await track.applyConstraints({
-            advanced: [{ focusMode: 'continuous' }]
-          });
-        } else if (capabilities.focusMode && capabilities.focusMode.includes('auto')) {
-          await track.applyConstraints({
-            advanced: [{ focusMode: 'auto' }]
-          });
+      // Apply autofocus if supported
+      const videoTrack = activeStream.getVideoTracks()[0];
+      if (videoTrack) {
+        try {
+          const capabilities = videoTrack.getCapabilities();
+          if (capabilities.focusMode) {
+            const settings = {};
+            if (capabilities.focusMode.includes('continuous')) {
+              settings.focusMode = 'continuous';
+            } else if (capabilities.focusMode.includes('auto')) {
+              settings.focusMode = 'auto';
+            }
+            if (Object.keys(settings).length > 0) {
+              await videoTrack.applyConstraints({ advanced: [settings] });
+            }
+          }
+        } catch (focusErr) {
+          console.warn('Autofocus not supported on this device:', focusErr);
         }
       }
+      
+      // Set the video element with autofocus stream
+      videoEl.srcObject = activeStream;
+      videoEl.setAttribute('autofocus', '');
+      videoEl.setAttribute('playsinline', '');
       
       codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
         if (result) {
@@ -68,17 +75,8 @@ const Scanner = (() => {
       });
     } catch (e) {
       console.error('Camera init failed', e);
-      // Fallback: try without autofocus constraints
-      try {
-        codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
-          if (result) {
-            onResultCallback && onResultCallback(result.getText());
-          }
-        });
-      } catch (fallbackError) {
-        const hint = document.getElementById('scannerHint');
-        if (hint) hint.textContent = 'Camera unavailable — use a USB scanner or type the code manually below.';
-      }
+      const hint = document.getElementById('scannerHint');
+      if (hint) hint.textContent = 'Camera unavailable — use a USB scanner or type the code manually below.';
     }
   }
 
@@ -88,7 +86,7 @@ const Scanner = (() => {
         codeReader.reset();
         codeReader = null;
       }
-      // Also stop the stream if we created one
+      // Stop all camera tracks
       if (activeStream) {
         activeStream.getTracks().forEach(track => track.stop());
         activeStream = null;
