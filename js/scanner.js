@@ -7,6 +7,12 @@
       listen globally and detect that pattern so a scan works
       the instant the scanner fires, even without opening the
       scan modal, as long as no other text input is focused.
+
+   Added:
+   - Continuous autofocus (if supported)
+   - Highest supported camera resolution
+   - Automatic zoom (if supported)
+   - Proper stream cleanup
    ============================================================ */
 
 const Scanner = (() => {
@@ -17,50 +23,137 @@ const Scanner = (() => {
   // ---------- Camera scanning ----------
   async function startCamera(videoEl, onResult) {
     onResultCallback = onResult;
+
     if (!window.ZXing) {
       UI.toast('Camera scanning library failed to load — use manual entry.', 'error');
       return;
     }
+
     try {
       const ZXingLib = window.ZXing;
       codeReader = new ZXingLib.BrowserMultiFormatReader();
+
       const devices = await codeReader.listVideoInputDevices();
-      // Prefer a rear/back camera on phones; otherwise fall back to the last listed device
-      const rearCam = devices.find(d => /back|rear|environment/i.test(d.label));
-      const deviceId = rearCam ? rearCam.deviceId : (devices.length ? devices[devices.length - 1].deviceId : undefined);
-      codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
-        if (result) {
-          onResultCallback && onResultCallback(result.getText());
+
+      // Prefer rear camera on phones
+      const rearCam = devices.find(d =>
+        /back|rear|environment/i.test(d.label)
+      );
+
+      const deviceId = rearCam
+        ? rearCam.deviceId
+        : (devices.length
+            ? devices[devices.length - 1].deviceId
+            : undefined);
+
+      codeReader.decodeFromVideoDevice(
+        deviceId,
+        videoEl,
+        async (result, err) => {
+
+          // Apply autofocus/settings once
+          if (!activeStream && videoEl.srcObject) {
+            activeStream = videoEl.srcObject;
+
+            try {
+              const track = activeStream.getVideoTracks()[0];
+
+              if (track) {
+                const capabilities = track.getCapabilities();
+                const constraints = {};
+
+                // Highest supported resolution
+                if (capabilities.width && capabilities.height) {
+                  constraints.width = capabilities.width.max;
+                  constraints.height = capabilities.height.max;
+                }
+
+                // Continuous autofocus
+                if (
+                  capabilities.focusMode &&
+                  capabilities.focusMode.includes("continuous")
+                ) {
+                  constraints.advanced = [
+                    { focusMode: "continuous" }
+                  ];
+                }
+
+                // Max zoom (helps barcode scanning)
+                if (capabilities.zoom) {
+                  constraints.advanced = [
+                    ...(constraints.advanced || []),
+                    { zoom: capabilities.zoom.max }
+                  ];
+                }
+
+                // Enable torch if available (optional)
+                if (capabilities.torch) {
+                  constraints.advanced = [
+                    ...(constraints.advanced || []),
+                    { torch: true }
+                  ];
+                }
+
+                if (Object.keys(constraints).length) {
+                  await track.applyConstraints(constraints);
+                  console.log("Camera constraints applied:", constraints);
+                }
+
+                console.log("Camera capabilities:", capabilities);
+              }
+            } catch (e) {
+              console.log("Camera doesn't support autofocus/zoom:", e);
+            }
+          }
+
+          if (result) {
+            onResultCallback && onResultCallback(result.getText());
+          }
         }
-      });
+      );
+
     } catch (e) {
-      console.error('Camera init failed', e);
-      const hint = document.getElementById('scannerHint');
-      if (hint) hint.textContent = 'Camera unavailable — use a USB scanner or type the code manually below.';
+      console.error("Camera init failed", e);
+
+      const hint = document.getElementById("scannerHint");
+      if (hint) {
+        hint.textContent =
+          "Camera unavailable — use a USB scanner or type the code manually below.";
+      }
     }
   }
 
   function stopCamera() {
     try {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
+      }
+
       if (codeReader) {
         codeReader.reset();
         codeReader = null;
       }
-    } catch (e) { /* noop */ }
+    } catch (e) {
+      // noop
+    }
   }
 
   // ---------- USB keyboard-wedge scanner ----------
-  // Detects rapid sequential keystrokes terminated by Enter, which is
-  // how virtually all USB/Bluetooth HID barcode scanners behave.
   let buffer = '';
   let lastKeyTime = 0;
-  const MAX_INTERVAL_MS = 40; // scanners type far faster than humans
+  const MAX_INTERVAL_MS = 40;
 
   function isTypingInField() {
     const el = document.activeElement;
     if (!el) return false;
+
     const tag = el.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    return (
+      tag === 'INPUT' ||
+      tag === 'TEXTAREA' ||
+      el.isContentEditable
+    );
   }
 
   function initGlobalListener(onGlobalScan) {
@@ -69,9 +162,6 @@ const Scanner = (() => {
       const gap = now - lastKeyTime;
       lastKeyTime = now;
 
-      // If the user is typing in a normal text field manually (slow typing),
-      // don't hijack it — only intercept when NOT focused in an editable
-      // field, OR when characters are arriving scanner-fast.
       const typingInField = isTypingInField();
 
       if (e.key === 'Enter') {
@@ -79,23 +169,29 @@ const Scanner = (() => {
           onGlobalScan(buffer);
           e.preventDefault();
         }
+
         buffer = '';
         return;
       }
 
       if (e.key.length === 1) {
         if (typingInField && gap > MAX_INTERVAL_MS) {
-          // Normal human typing in a field — don't buffer as a scan
           buffer = '';
           return;
         }
+
         if (gap > MAX_INTERVAL_MS && buffer.length > 0) {
-          buffer = ''; // reset — too slow to be a scanner burst
+          buffer = '';
         }
+
         buffer += e.key;
       }
     });
   }
 
-  return { startCamera, stopCamera, initGlobalListener };
+  return {
+    startCamera,
+    stopCamera,
+    initGlobalListener
+  };
 })();
