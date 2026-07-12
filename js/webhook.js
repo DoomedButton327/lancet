@@ -13,7 +13,7 @@
    Webhook URL.
    ============================================================ */
 
-const DISCORD_WEBHOOK_URL = ""; // <-- PASTE YOUR DISCORD WEBHOOK URL HERE
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1525856311185637396/qsAv0uvOfy0pagGwWV9ClRnnXlfg02kVoVBcFuuwa98xnx93oTHQHEN7RF8yzwlQLiQy"; // <-- PASTE YOUR DISCORD WEBHOOK URL HERE
 
 const Webhook = (() => {
 
